@@ -9,7 +9,6 @@ export async function POST(req: Request) {
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !supabaseServiceKey) {
-    console.error('VERIFY: MISSING ENV VARS');
     return Response.json({ error: 'Server configuration error' }, { status: 500 });
   }
 
@@ -26,31 +25,27 @@ export async function POST(req: Request) {
       .single();
 
     if (error || !data) {
-      console.error('VERIFY ERROR:', error || 'Code not found/expired');
-      return Response.json({ error: 'رمز غير صحيح أو انتهت صلاحيته (١٥ ثانية)' }, { status: 400 });
+      return Response.json({ error: 'رمز غير صحيح أو انتهت صلاحيته. الرمز صالح لمدة ١٠ دقائق فقط' }, { status: 400 });
     }
 
-    // 2. Code is valid! Delete it so it can't be reused
+    // 2. Code is valid — delete it so it cannot be reused
     await supabaseAdmin.from('otps').delete().eq('id', data.id);
 
-    // 3. Generate a magic link for the user (Signs them in)
+    // 3. Generate a magic link using the admin SDK
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
       email,
-      options: {
-        redirectTo: `${new URL(req.url).origin}/auth/callback`,
-      },
     });
 
-    if (linkError) {
+    if (linkError || !linkData) {
       console.error('GENERATE LINK ERROR:', linkError);
       return Response.json({ error: 'فشل إنشاء جلسة الدخول' }, { status: 500 });
     }
 
-    return Response.json({ 
-      success: true, 
-      action_link: linkData.properties.action_link 
-    });
+    // 4. Return the RAW email_otp (pre-hash) to the client.
+    //    supabase.auth.verifyOtp() on the client will hash it before comparison,
+    //    so we must NOT send the already-hashed 'hashed_token'.
+    return Response.json({ emailOtp: linkData.properties.email_otp });
   } catch (err: any) {
     console.error('VERIFY SERVER ERROR:', err);
     return Response.json({ error: 'Internal server error' }, { status: 500 });

@@ -24,6 +24,10 @@ export default function SettingsPage() {
   const [toggling, setToggling] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [prompts, setPrompts] = useState<string[]>([]);
+  const [savingPrompts, setSavingPrompts] = useState(false);
+  const [bio, setBio] = useState('');
+  const [savingBio, setSavingBio] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -51,6 +55,13 @@ export default function SettingsPage() {
       }
 
       setProfile(data);
+      setBio(data.bio || '');
+      setPrompts(data.prompts && data.prompts.length > 0 ? data.prompts : [
+        'ما رأيك بي بصدق؟',
+        'قيّم أسلوبي من ١ إلى ١٠',
+        'شيء تتمنى أن أعرفه عنك',
+        'ما الشيء الذي يميزني؟'
+      ]);
       setLoading(false);
     }
 
@@ -107,6 +118,50 @@ export default function SettingsPage() {
       toast.error(data.error || 'فشل حذف الحساب');
       setDeleting(false);
     }
+  };
+
+  const updatePrompt = (index: number, val: string) => {
+    const newP = [...prompts];
+    newP[index] = val;
+    setPrompts(newP);
+  };
+
+  const addPrompt = () => {
+    if (prompts.length >= 5) return;
+    setPrompts([...prompts, '']);
+  };
+
+  const removePrompt = (index: number) => {
+    const newP = [...prompts];
+    newP.splice(index, 1);
+    setPrompts(newP);
+  };
+
+  const saveBio = async () => {
+    setSavingBio(true);
+    const validBio = bio.trim();
+    const finalBio = validBio.length > 0 ? validBio : null;
+    const { error } = await supabase.from('profiles').update({ bio: finalBio }).eq('id', profile.id);
+    if (error) {
+      toast.error('فشل حفظ النبذة التعريفية');
+    } else {
+      setBio(finalBio || '');
+      toast.success('تم الحفظ بنجاح!');
+    }
+    setSavingBio(false);
+  };
+
+  const savePrompts = async () => {
+    setSavingPrompts(true);
+    const validPrompts = prompts.map((p) => p.trim()).filter((p) => p.length > 0);
+    const { error } = await supabase.from('profiles').update({ prompts: validPrompts }).eq('id', profile.id);
+    if (error) {
+      toast.error('فشل حفظ الأسئلة المقترحة');
+    } else {
+      setPrompts(validPrompts);
+      toast.success('تم حفظ الأسئلة بنجاح!');
+    }
+    setSavingPrompts(false);
   };
 
   const handleLogout = async () => {
@@ -184,6 +239,38 @@ export default function SettingsPage() {
           </div>
         </motion.section>
 
+        {/* 1.5 - Bio */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="glass-card space-y-4 border border-white/5 relative overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 w-1 h-full bg-linear-to-b from-neon-blue to-neon-purple" />
+          <h2 className="text-lg font-bold flex items-center gap-2">
+            <MessageSquare size={18} className="text-neon-blue" />
+            النبذة التعريفية (Bio)
+          </h2>
+          <p className="text-white/40 text-sm">
+            أضف نبذة قصيرة تظهر في صفحتك العامة (بحد أقصى 100 حرف).
+          </p>
+          <div className="space-y-2 text-right">
+            <input
+              type="text"
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              onBlur={saveBio}
+              className="w-full glass-input text-sm text-right"
+              placeholder="طالب جامعي · القاهرة · أحب الأسئلة الصعبة"
+              maxLength={100}
+            />
+            <div className="flex justify-between items-center text-xs text-white/30">
+              <span>{savingBio ? 'جاري الحفظ...' : ''}</span>
+              <span className="font-mono">{bio.length} / 100</span>
+            </div>
+          </div>
+        </motion.section>
+
         {/* 2 - Toggle receiving */}
         <motion.section
           initial={{ opacity: 0, y: 20 }}
@@ -223,6 +310,60 @@ export default function SettingsPage() {
                   profile.receiving_enabled ? 'translate-x-7' : 'translate-x-0'
                 }`}
               />
+            </button>
+          </div>
+        </motion.section>
+
+        {/* 2.5 - Prompts editor */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="glass-card space-y-4 border border-white/5 relative overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 w-1 h-full bg-linear-to-b from-neon-blue to-neon-purple" />
+          <h2 className="text-lg font-bold flex items-center gap-2">
+            <MessageSquare size={18} className="text-neon-blue" />
+            الأسئلة المقترحة (Prompts)
+          </h2>
+          <p className="text-white/40 text-sm">
+            أضف أسئلة تظهر كخيارات سريعة للزوار لتسهيل كتابة الرسائل (بحد أقصى 5).
+          </p>
+          <div className="space-y-3">
+            {prompts.map((p, i) => (
+              <div key={i} className="flex gap-2">
+                <input
+                  type="text"
+                  value={p}
+                  onChange={(e) => updatePrompt(i, e.target.value)}
+                  className="flex-1 glass-input text-sm text-right"
+                  placeholder="اكتب سؤالاً مقترحاً..."
+                  maxLength={60}
+                />
+                <button
+                  onClick={() => removePrompt(i)}
+                  className="p-3 text-red-500 hover:bg-red-500/20 hover:text-red-300 rounded-xl transition-all border border-red-500/10"
+                  title="حذف"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={addPrompt}
+              disabled={prompts.length >= 5}
+              className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold transition-all disabled:opacity-50 border border-white/10 text-sm"
+            >
+              إضافة سؤال +
+            </button>
+            <button
+              onClick={savePrompts}
+              disabled={savingPrompts}
+              className="flex-1 py-3 rounded-xl bg-neon-purple/20 hover:bg-neon-purple/40 text-neon-purple border border-neon-purple/30 font-bold transition-all disabled:opacity-50 text-sm focus:outline-hidden"
+            >
+              {savingPrompts ? 'جاري الحفظ...' : 'حفظ الأسئلة'}
             </button>
           </div>
         </motion.section>

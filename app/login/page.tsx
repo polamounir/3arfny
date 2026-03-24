@@ -6,6 +6,7 @@ import { MessageSquare, LogIn, Mail, ArrowRight, RefreshCw, ChevronLeft } from '
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { createClient } from '@/lib/supabase/client';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -14,14 +15,22 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [timer, setTimer] = useState(0);
   const router = useRouter();
+  const supabase = createClient();
 
   useEffect(() => {
+    // Check if user is already logged in
+    supabase.auth.getSession().then(({ data: { session } }: any) => {
+      if (session) {
+        router.push('/dashboard');
+      }
+    });
+
     let interval: any;
     if (timer > 0) {
       interval = setInterval(() => setTimer((t) => t - 1), 1000);
     }
     return () => clearInterval(interval);
-  }, [timer]);
+  }, [timer, router, supabase]);
 
   const handleSendOtp = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -56,6 +65,7 @@ export default function LoginPage() {
     setLoading(true);
     
     try {
+      // Step 1: Validate the 4-digit code on the server and get a hashed magic-link token
       const res = await fetch('/api/auth/otp/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -66,11 +76,36 @@ export default function LoginPage() {
 
       if (!res.ok) {
         toast.error(data.error || 'رمز غير صحيح');
-      } else {
-        toast.success('جارٍ تسجيل الدخول... 🚀');
-        // The verify endpoint returns an action_link which logs the user in
-        window.location.assign(data.action_link);
+        return;
       }
+
+      // Step 2: Use the browser Supabase client to verify the token and create a session.
+      // email_otp is the RAW token — verifyOtp hashes it before the DB lookup.
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        email,
+        token: data.emailOtp,
+        type: 'email',
+      });
+
+      if (verifyError) {
+        console.error('verifyOtp error:', verifyError);
+        toast.error('فشل تفعيل الجلسة: ' + verifyError.message);
+        return;
+      }
+
+      toast.success('جارٍ تسجيل الدخول... 🚀');
+
+      // Step 3: Check if this user already has a profile and route accordingly
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.push('/login'); return; }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      router.push(profile ? '/dashboard' : '/onboarding');
     } catch (err) {
       toast.error('خطأ في التحقق');
     } finally {

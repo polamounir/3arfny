@@ -17,6 +17,9 @@ export const metadata: Metadata = {
   title: "3arfny | Anonymous Messaging",
   description: "Send and receive anonymous messages with style. 100% free and unrestricted.",
   manifest: "/manifest.json",
+  icons: {
+    icon: '/icon?cachebust=1',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

@@ -2,7 +2,6 @@ import nodemailer from 'nodemailer';
 import { createClient } from '@supabase/supabase-js';
 
 // --- CONFIGURATION ---
-const FROM_NAME = '3arfny (عرفني)';
 // ---------------------
 
 export async function POST(req: Request) {

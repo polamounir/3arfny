@@ -1,24 +1,30 @@
 import { NextResponse } from 'next/server'
-// The client you created in Step 1
 import { createClient } from '@/lib/supabase/server'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
-  console.log('AUTH CALLBACK: RECEIVED URL', request.url);
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/dashboard'
-
-  console.log('AUTH CALLBACK: CODE', !!code, 'NEXT', next);
+  // Allow an explicit ?next= param but default to checking profile
+  const explicitNext = searchParams.get('next')
 
   if (code) {
     const supabase = await createClient()
     const { data, error } = await supabase.auth.exchangeCodeForSession(code)
-    console.log('AUTH CALLBACK: EXCHANGE RESULT', { hasData: !!data, hasSession: !!data?.session, error });
-    if (!error) {
-      const forwardedHost = request.headers.get('x-forwarded-host') // original origin before load balancer
+
+    if (!error && data.session) {
+      // Check if the user already has a profile (username set)
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', data.session.user.id)
+        .maybeSingle()
+
+      // Determine where to send the user
+      const next = explicitNext ?? (profile ? '/dashboard' : '/onboarding')
+
+      const forwardedHost = request.headers.get('x-forwarded-host')
       const isLocalEnv = process.env.NODE_ENV === 'development'
       if (isLocalEnv) {
-        // we can skip forwarded host check in local dev
         return NextResponse.redirect(`${origin}${next}`)
       } else if (forwardedHost) {
         return NextResponse.redirect(`https://${forwardedHost}${next}`)

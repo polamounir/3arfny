@@ -2,6 +2,19 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
+### Environment Variables
+
+Before running the application, copy the example environment file and fill in your values:
+
+```bash
+cp .env.example .env.local
+```
+
+You will need:
+- Supabase Project URL and keys (Anon key and Service Role key)
+- A Gmail account with an App Password (not your main password)
+- VAPID keys for push notifications (generate via `npx web-push generate-vapid-keys`)
+
 First, run the development server:
 
 ```bash

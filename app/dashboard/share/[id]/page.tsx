@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { toPng } from 'html-to-image';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Download, RefreshCw, Smartphone, Instagram } from 'lucide-react';
+import { ArrowLeft, Download, RefreshCw, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ShareMessagePage() {

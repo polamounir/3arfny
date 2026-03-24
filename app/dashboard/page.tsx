@@ -13,18 +13,36 @@ import {
   Clock,
   Ghost,
   LogOut,
-  Settings
+  Settings,
+  Send,
+  Inbox,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
+const PAGE_SIZE = 20;
+
 export default function DashboardPage() {
+  const [activeTab, setActiveTab] = useState<'inbox' | 'sent'>('inbox');
   const [messages, setMessages] = useState<any[]>([]);
+  const [sentMessages, setSentMessages] = useState<any[]>([]);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [pushPrompt, setPushPrompt] = useState(false);
   const supabase = createClient();
   const router = useRouter();
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window && 'serviceWorker' in navigator) {
+      if (Notification.permission === 'default') {
+        setPushPrompt(true);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     async function fetchData() {
@@ -47,23 +65,117 @@ export default function DashboardPage() {
       }
       setProfile(profileData);
 
-      // Fetch Messages
-      const { data: msgs } = await supabase
+      // Try to fetch with sender info (fails safely if migration not run)
+      let finalMsgs = null;
+      const { data: msgs, error: msgsError } = await supabase
         .from('messages')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*, sender:profiles!messages_sender_id_fkey(username)')
+        .eq('receiver_id', user.id)
+        .eq('is_deleted_by_receiver', false)
+        .order('created_at', { ascending: false })
+        .range(0, PAGE_SIZE - 1);
       
-      setMessages(msgs || []);
+      if (msgsError && msgsError.code === 'PGRST204') {
+        const { data: fallback } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('receiver_id', user.id)
+          .eq('is_deleted_by_receiver', false)
+          .order('created_at', { ascending: false })
+          .range(0, PAGE_SIZE - 1);
+        finalMsgs = fallback;
+      } else {
+        if (msgsError) console.error('INBOX FETCH ERROR:', msgsError);
+        finalMsgs = msgs;
+      }
+
+      if (finalMsgs && finalMsgs.length < PAGE_SIZE) setHasMore(false);
+      setMessages(finalMsgs || []);
+
+      // Fetch sent messages — silently empty if sender_id column not yet created
+      try {
+        const { data: sent, error: sentError } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('sender_id', user.id)
+          .eq('is_deleted_by_sender', false)
+          .order('created_at', { ascending: false })
+          .limit(50);
+
+        if (sentError && sentError.code !== 'PGRST204') {
+          console.error('SENT FETCH ERROR:', sentError);
+        }
+        setSentMessages(sent || []);
+      } catch {
+        // column doesn't exist yet — just leave Sent tab empty
+      }
       setLoading(false);
     }
 
     fetchData();
   }, [supabase, router]);
 
-  const deleteMessage = async (id: string) => {
+  const loadMore = async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    const nextPage = page + 1;
+    let finalMore = null;
+    const { data: more, error: moreError } = await supabase
+      .from('messages')
+      .select('*, sender:profiles!messages_sender_id_fkey(username)')
+      .eq('receiver_id', profile.id)
+      .eq('is_deleted_by_receiver', false)
+      .order('created_at', { ascending: false })
+      .range(nextPage * PAGE_SIZE, (nextPage + 1) * PAGE_SIZE - 1);
+    
+    if (moreError && moreError.code === 'PGRST204') {
+      const { data: fallback } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('receiver_id', profile.id)
+        .eq('is_deleted_by_receiver', false)
+        .order('created_at', { ascending: false })
+        .range(nextPage * PAGE_SIZE, (nextPage + 1) * PAGE_SIZE - 1);
+      finalMore = fallback;
+    } else {
+      finalMore = more;
+    }
+
+    if (finalMore) {
+      setMessages((prev) => [...prev, ...finalMore]);
+      setPage(nextPage);
+      if (finalMore.length < PAGE_SIZE) setHasMore(false);
+    }
+    setLoadingMore(false);
+  };
+
+  const toggleReaction = async (id: string, currentReaction: string | null, newReaction: string) => {
+    const nextReaction = currentReaction === newReaction ? null : newReaction;
+    
+    // Optimistic UI update
+    setMessages(msgs => msgs.map(m => m.id === id ? { ...m, reaction: nextReaction } : m));
+    
+    const res = await fetch(`/api/messages/${id}`, { 
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reaction: nextReaction })
+    });
+
+    if (!res.ok) {
+      toast.error('فشل إضافة التفاعل');
+      // Revert optimistic update
+      setMessages(msgs => msgs.map(m => m.id === id ? { ...m, reaction: currentReaction } : m));
+    }
+  };
+
+  const deleteMessage = async (id: string, isSentTab: boolean = false) => {
     const res = await fetch(`/api/messages/${id}`, { method: 'DELETE' });
     if (res.ok) {
-      setMessages(messages.filter((m) => m.id !== id));
+      if (isSentTab) {
+        setSentMessages(sentMessages.filter((m) => m.id !== id));
+      } else {
+        setMessages(messages.filter((m) => m.id !== id));
+      }
       toast.success('تم حذف الرسالة');
     } else {
       toast.error('فشل حذف الرسالة');
@@ -76,6 +188,8 @@ export default function DashboardPage() {
     const res = await fetch('/api/messages/clear', { method: 'POST' });
     if (res.ok) {
       setMessages([]);
+      setPage(0);
+      setHasMore(true);
       toast.success('تم مسح صندوق الوارد!');
     } else {
       toast.error('فشل مسح الصندوق');
@@ -93,6 +207,47 @@ export default function DashboardPage() {
     router.push('/');
   };
 
+  const subscribeToPush = async () => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        toast.error('تم رفض صلاحية الإشعارات');
+        setPushPrompt(false);
+        return;
+      }
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '')
+      });
+      const res = await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(subscription)
+      });
+      if (res.ok) {
+        toast.success('تم تفعيل الإشعارات بنجاح!');
+        setPushPrompt(false);
+      } else { throw new Error('API Error'); }
+    } catch (e) {
+      console.error(e);
+      toast.error('فشل تفعيل الإشعارات. تأكد من إعداد المفاتيح الخاصة بك.');
+    }
+  };
+
+  // Helper for web-push key
+  function urlBase64ToUint8Array(base64String: string) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  }
+
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="w-8 h-8 border-4 border-neon-purple border-t-transparent rounded-full animate-spin" />
@@ -108,10 +263,12 @@ export default function DashboardPage() {
           <div className="absolute top-0 right-0 w-1 h-full bg-linear-to-b from-neon-purple to-neon-blue" />
           
           <div className="space-y-1 text-right">
-            <h1 className="text-3xl font-black italic tracking-tighter">صندوق الوارد</h1>
+            <h1 className="text-3xl font-black italic tracking-tighter">
+              {activeTab === 'inbox' ? 'صندوق الوارد' : 'الرسائل المُرسَلة'}
+            </h1>
             <p className="text-white/40 flex items-center gap-2 justify-end">
               <span className="text-neon-purple font-bold">@{profile.username}</span>
-              • {messages.length} رسالة مستلمة
+              • {activeTab === 'inbox' ? `${messages.length} رسالة مستلمة` : `${sentMessages.length} رسالة مُرسَلة`}
             </p>
           </div>
           
@@ -147,9 +304,58 @@ export default function DashboardPage() {
           </div>
         </header>
 
+        {pushPrompt && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl border border-neon-orange/30 bg-neon-orange/10 text-white"
+          >
+            <div className="flex flex-col text-right">
+              <span className="font-bold text-neon-orange">إشعارات الرسائل (جديد) 🚀</span>
+              <p className="text-sm text-white/70 mt-1">فعّل الإشعارات لتعلم فور وصول رسالة جديدة حتى لو كان التطبيق مغلقاً.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button onClick={() => setPushPrompt(false)} className="text-sm text-white/50 hover:text-white transition-colors">تخطي</button>
+              <button 
+                onClick={subscribeToPush} 
+                className="px-6 py-2 rounded-lg bg-neon-orange hover:bg-neon-orange/80 font-bold transition-all text-sm shrink-0 shadow-[0_0_15px_rgba(249,115,22,0.4)]"
+              >
+                تفعيل الإشعارات
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Tab Switcher */}
+        <div className="flex items-center gap-2 p-1 rounded-xl bg-white/5 border border-white/10">
+          <button
+            onClick={() => setActiveTab('inbox')}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg font-bold transition-all text-sm ${
+              activeTab === 'inbox'
+                ? 'bg-neon-purple text-white shadow-[0_0_15px_rgba(168,85,247,0.4)]'
+                : 'text-white/40 hover:text-white'
+            }`}
+          >
+            <Inbox size={16} />
+            الوارد ({messages.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('sent')}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg font-bold transition-all text-sm ${
+              activeTab === 'sent'
+                ? 'bg-neon-blue text-white shadow-[0_0_15px_rgba(0,112,243,0.4)]'
+                : 'text-white/40 hover:text-white'
+            }`}
+          >
+            <Send size={16} />
+            المُرسَل ({sentMessages.length})
+          </button>
+        </div>
+
         {/* Messages Feed */}
-        <div className="space-y-4">
-          <AnimatePresence mode="popLayout">
+        {activeTab === 'inbox' ? (
+          <>
+            <AnimatePresence mode="popLayout">
             {messages.length === 0 ? (
               <motion.div
                 initial={{ opacity: 0 }}
@@ -184,11 +390,37 @@ export default function DashboardPage() {
                       <div className="flex items-center gap-2 justify-end text-xs font-mono text-white/30 uppercase tracking-widest">
                         <Clock size={12} />
                         {new Date(msg.created_at).toLocaleDateString('ar-EG')} في {new Date(msg.created_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+                        {msg.sender?.username && msg.is_anonymous === false && (
+                          <span className="text-neon-purple/80 font-bold normal-case tracking-normal">
+                            من @{msg.sender.username}
+                          </span>
+                        )}
                       </div>
                       <p className="text-lg leading-relaxed text-white/90 whitespace-pre-wrap">{msg.content}</p>
+                      
+                      <div className="pt-2 flex items-center justify-end relative group/reaction">
+                        <div className="flex items-center gap-1 opacity-0 group-hover/reaction:opacity-100 transition-opacity absolute right-10 bottom-0 bg-background/90 backdrop-blur-md px-2 py-1 rounded-full border border-white/10 z-10 shadow-xl" dir="ltr">
+                          {['👏', '😮', '🔥', '😂', '❤️'].map(emoji => (
+                            <button
+                              key={emoji}
+                              onClick={() => toggleReaction(msg.id, msg.reaction, emoji)}
+                              className={`text-xl hover:scale-125 transition-transform w-8 h-8 flex items-center justify-center ${msg.reaction === emoji ? 'bg-white/10 rounded-full' : 'opacity-70 hover:opacity-100'}`}
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-xl cursor-default transition-colors hover:bg-white/10">
+                          {msg.reaction ? (
+                            <span className="opacity-90">{msg.reaction}</span>
+                          ) : (
+                            <span className="text-white/30 text-lg">+</span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                     
-                    <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity relative z-0">
                       <button
                         onClick={() => router.push(`/dashboard/share/${msg.id}`)}
                         className="p-3 rounded-lg bg-neon-blue/20 text-neon-blue hover:bg-neon-blue transition-all hover:text-white"
@@ -197,7 +429,7 @@ export default function DashboardPage() {
                         <Share2 size={18} />
                       </button>
                       <button
-                        onClick={() => deleteMessage(msg.id)}
+                        onClick={() => deleteMessage(msg.id, false)}
                         className="p-3 rounded-lg bg-red-500/20 text-red-500 hover:bg-red-500 transition-all hover:text-white"
                         title="حذف"
                       >
@@ -212,7 +444,84 @@ export default function DashboardPage() {
               ))
             )}
           </AnimatePresence>
-        </div>
+          {messages.length > 0 && hasMore && (
+            <button
+              onClick={loadMore}
+              disabled={loadingMore}
+              className="w-full mt-4 py-4 rounded-xl bg-neon-purple/20 hover:bg-neon-purple/30 text-neon-purple font-bold transition-all disabled:opacity-50 flex items-center justify-center border border-neon-purple/30"
+            >
+              {loadingMore ? 'جاري التحميل...' : 'تحميل المزيد'}
+            </button>
+          )}
+          </>
+        ) : (
+          /* Sent Tab */
+          <div className="space-y-4">
+            <AnimatePresence mode="popLayout">
+              {sentMessages.length === 0 ? (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="py-20 text-center space-y-4"
+                >
+                  <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Send className="w-10 h-10 text-white/20" />
+                  </div>
+                  <h2 className="text-xl font-medium text-white/40">لم تُرسِل أي رسالة بعد</h2>
+                  <p className="text-white/20 max-w-xs mx-auto text-center">
+                    الرسائل المُرسَلة من حسابك ستظهر هنا، أما الرسائل المجهولة التي أُرسِلت بدون حساب فلا تُسجَّل.
+                  </p>
+                </motion.div>
+              ) : (
+                sentMessages.map((msg, index) => (
+                  <motion.div
+                    key={msg.id}
+                    layout
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ delay: index * 0.04 }}
+                    className="glass-card group relative p-6 border-white/5 hover:border-white/10 transition-all overflow-hidden text-right"
+                  >
+                    <div className="flex justify-between gap-4">
+                      <div className="space-y-4 flex-1">
+                        <div className="flex items-center justify-end gap-2 text-xs font-mono text-white/30 uppercase tracking-widest">
+                          <Clock size={12} />
+                          {new Date(msg.created_at).toLocaleDateString('ar-EG')} في {new Date(msg.created_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+                          {msg.receiver?.username && (
+                            <span className="text-neon-blue/70 font-bold normal-case tracking-normal">
+                              إلى @{msg.receiver.username}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-lg leading-relaxed text-white/90 whitespace-pre-wrap">{msg.content}</p>
+
+                        {msg.reaction && (
+                          <div className="pt-2 flex items-center justify-end">
+                            <div className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-xl cursor-default text-white/90">
+                              {msg.reaction}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity relative z-0">
+                        <button
+                          onClick={() => deleteMessage(msg.id, true)}
+                          className="p-3 rounded-lg bg-red-500/20 text-red-500 hover:bg-red-500 transition-all hover:text-white"
+                          title="حذف من السجل"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="absolute top-0 right-0 w-1 h-full bg-linear-to-b from-neon-blue to-neon-orange opacity-40" />
+                  </motion.div>
+                ))
+              )}
+            </AnimatePresence>
+          </div>
+        )}
       </div>
       
       {/* Decorative Blur */}

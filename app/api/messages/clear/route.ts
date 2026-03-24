@@ -10,12 +10,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { error } = await supabase
+    // 1. Hard-delete entirely anonymous messages or those already deleted by the sender
+    await supabase
       .from('messages')
       .delete()
-      .eq('receiver_id', user.id);
+      .eq('receiver_id', user.id)
+      .is('sender_id', null);
 
-    if (error) {
+    // 2. Soft-delete messages with a known sender
+    const { error } = await supabase
+      .from('messages')
+      .update({ is_deleted_by_receiver: true })
+      .eq('receiver_id', user.id)
+      .not('sender_id', 'is', null);
+
+    // graceful fallback if DB column not created
+    if (error && error.code === 'PGRST204') {
+      await supabase
+        .from('messages')
+        .delete()
+        .eq('receiver_id', user.id);
+    } else if (error) {
       return NextResponse.json({ error: 'Failed to clear inbox' }, { status: 500 });
     }
 

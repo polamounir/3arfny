@@ -11,7 +11,10 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState<any>(null);
+  const [displayPrompts, setDisplayPrompts] = useState<string[]>([]);
   const [notFound, setNotFound] = useState(false);
+  const [isAnonymous, setIsAnonymous] = useState(true);
+  const [senderProfile, setSenderProfile] = useState<any>(null);
   const supabase = createClient();
   const router = useRouter();
 
@@ -21,7 +24,7 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
       const resolvedParams = await params;
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, username, receiving_enabled')
+        .select('id, username, receiving_enabled, prompts, bio')
         .eq('username', resolvedParams.username.toLowerCase())
         .single();
 
@@ -30,9 +33,28 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
         setNotFound(true);
       } else {
         setProfile(data);
+        const allPrompts = data.prompts && data.prompts.length > 0 
+          ? data.prompts 
+          : ['ما رأيك بي بصدق؟', 'قيّم أسلوبي من ١ إلى ١٠', 'شيء تتمنى أن أعرفه عنك', 'ما الشيء الذي يميزني؟'];
+        const shuffled = [...allPrompts];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        setDisplayPrompts(shuffled.slice(0, 3));
       }
     }
     fetchProfile();
+    
+    async function checkSender() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase.from('profiles').select('username').eq('id', user.id).single();
+        if (data) setSenderProfile(data);
+      }
+    }
+    checkSender();
+
     return () => { mounted = false; };
   }, [params, supabase]);
 
@@ -47,6 +69,7 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
       body: JSON.stringify({
         receiverId: profile.id,
         content: message,
+        isAnonymous,
       }),
     });
 
@@ -131,9 +154,30 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
             <div className="inline-block px-4 py-1 rounded-full bg-white/5 border border-white/10">
               <span className="text-neon-gradient font-bold text-xl">@{profile.username}</span>
             </div>
+            {profile.bio && (
+              <p className="text-white/50 text-sm text-center max-w-xs mx-auto pt-2">
+                {profile.bio}
+              </p>
+            )}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-3 pt-2">
+              <p className="text-white/40 text-sm font-medium pr-1 text-right">أو اختر سؤالاً لتجيب عليه:</p>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {displayPrompts.map((prompt, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setMessage(prompt)}
+                    className="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-white/70 text-sm hover:bg-white/10 hover:text-white transition-all text-right"
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="relative group text-right">
               <textarea
                 value={message}
@@ -148,6 +192,26 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
               </div>
             </div>
 
+            {senderProfile && (
+              <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 text-right" dir="rtl">
+                <div className="text-right">
+                  <p className="text-sm font-bold text-white">إخفاء هويتي</p>
+                  <p className="text-xs text-white/50">
+                    {isAnonymous ? 'ستصل الرسالة بصفة مجهولة' : `ستصل الرسالة باسم @${senderProfile.username}`}
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="sr-only peer" 
+                    checked={isAnonymous}
+                    onChange={(e) => setIsAnonymous(e.target.checked)}
+                  />
+                  <div className="w-11 h-6 bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-neon-purple shadow-[inset_0_2px_4px_rgba(0,0,0,0.4)]"></div>
+                </label>
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={loading || !message.trim()}
@@ -160,7 +224,7 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
                   <Sparkles className="animate-spin" />
                 ) : (
                   <>
-                    أرسل بهوية مجهولة
+                    {senderProfile && !isAnonymous ? 'أرسل باسمي' : 'أرسل بهوية مجهولة'}
                     <Send size={20} className="scale-x-[-1]" />
                   </>
                 )}

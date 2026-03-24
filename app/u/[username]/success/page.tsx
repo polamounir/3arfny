@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { CheckCircle2, MessageSquare, Sparkles, ArrowLeft } from 'lucide-react';
-import { use } from 'react';
+import { use, useEffect, useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
 
 interface Props {
   params: Promise<{ username: string }>;
@@ -11,6 +12,14 @@ interface Props {
 
 export default function SuccessPage({ params }: Props) {
   const { username } = use(params);
+  const [hasSession, setHasSession] = useState(false);
+  const supabase = createClient();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) setHasSession(true);
+    });
+  }, [supabase]);
 
   return (
     <div
@@ -58,7 +67,7 @@ export default function SuccessPage({ params }: Props) {
           </p>
         </motion.div>
 
-        {/* Viral CTA Card */}
+        {/* Viral CTA Card / Dashboard Link */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -67,28 +76,52 @@ export default function SuccessPage({ params }: Props) {
         >
           <div className="absolute top-0 left-0 w-full h-0.5 bg-linear-to-r from-neon-purple via-neon-blue to-neon-orange" />
 
-          <div className="flex items-center justify-center gap-3">
-            <Sparkles className="text-neon-orange w-6 h-6" />
-            <p className="text-white font-bold text-lg">أنت أيضاً تستحق رسائل مجهولة!</p>
-          </div>
+          {hasSession ? (
+            <>
+              <div className="flex items-center justify-center gap-3">
+                <Sparkles className="text-neon-orange w-6 h-6" />
+                <p className="text-white font-bold text-lg">شكراً لاستخدامك عرفني!</p>
+              </div>
+              <p className="text-white/40 text-sm">
+                يمكنك العودة إلى حسابك لمشاهدة رسائلك أو الإعدادات.
+              </p>
+              <Link
+                href="/dashboard"
+                className="block w-full py-4 rounded-xl text-center text-white font-black text-lg transition-all hover:scale-[1.02] active:scale-95"
+                style={{
+                  background: 'linear-gradient(135deg, #a855f7, #3b82f6)',
+                  boxShadow: '0 0 30px rgba(168,85,247,0.4)',
+                }}
+              >
+                العودة إلى لوحة التحكم
+              </Link>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center justify-center gap-3">
+                <Sparkles className="text-neon-orange w-6 h-6" />
+                <p className="text-white font-bold text-lg">أنت أيضاً تستحق رسائل مجهولة!</p>
+              </div>
 
-          <p className="text-white/40 text-sm">
-            احصل على رابطك الخاص وشاركه مع أصدقائك لتلقي آرائهم الصريحة.
-          </p>
+              <p className="text-white/40 text-sm">
+                احصل على رابطك الخاص وشاركه مع أصدقائك لتلقي آرائهم الصريحة.
+              </p>
 
-          <Link
-            href="/login"
-            className="block w-full py-4 rounded-xl text-center text-white font-black text-lg transition-all hover:scale-[1.02] active:scale-95"
-            style={{
-              background: 'linear-gradient(135deg, #a855f7, #3b82f6)',
-              boxShadow: '0 0 30px rgba(168,85,247,0.4)',
-            }}
-          >
-            <span className="flex items-center justify-center gap-2">
-              <MessageSquare size={20} />
-              احصل على رابطك الخاص مجاناً
-            </span>
-          </Link>
+              <Link
+                href="/login"
+                className="block w-full py-4 rounded-xl text-center text-white font-black text-lg transition-all hover:scale-[1.02] active:scale-95"
+                style={{
+                  background: 'linear-gradient(135deg, #a855f7, #3b82f6)',
+                  boxShadow: '0 0 30px rgba(168,85,247,0.4)',
+                }}
+              >
+                <span className="flex items-center justify-center gap-2">
+                  <MessageSquare size={20} />
+                  احصل على رابطك الخاص مجاناً
+                </span>
+              </Link>
+            </>
+          )}
         </motion.div>
 
         {/* Back link */}
