@@ -20,6 +20,7 @@ import {
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 
 const PAGE_SIZE = 20;
 
@@ -33,6 +34,7 @@ export default function DashboardPage() {
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [pushPrompt, setPushPrompt] = useState(false);
+  const [isClearModalOpen, setIsClearModalOpen] = useState(false);
   const supabase = createClient();
   const router = useRouter();
 
@@ -183,8 +185,6 @@ export default function DashboardPage() {
   };
 
   const clearInbox = async () => {
-    if (!confirm('هل أنت متأكد من مسح جميع الرسائل في صندوق الوارد؟')) return;
-    
     const res = await fetch('/api/messages/clear', { method: 'POST' });
     if (res.ok) {
       setMessages([]);
@@ -281,7 +281,7 @@ export default function DashboardPage() {
               مشاركة الرابط
             </button>
             <button
-              onClick={clearInbox}
+              onClick={() => setIsClearModalOpen(true)}
               className="p-3 rounded-xl glass hover:bg-red-500/20 hover:text-red-500 transition-all text-white/40"
               title="مسح الصندوق"
             >
@@ -533,6 +533,16 @@ export default function DashboardPage() {
         <Link href="/privacy" className="hover:text-white/40 transition-colors">الخصوصية</Link>
         <Link href="/terms" className="hover:text-white/40 transition-colors">الشروط</Link>
       </footer>
+      <ConfirmModal
+        isOpen={isClearModalOpen}
+        onClose={() => setIsClearModalOpen(false)}
+        onConfirm={clearInbox}
+        variant="danger"
+        title="مسح صندوق الوارد"
+        message="هل أنت متأكد من مسح جميع الرسائل في صندوق الوارد؟ لا يمكن التراجع عن هذا الإجراء."
+        confirmText="نعم، امسح الكل"
+        cancelText="إلغاء"
+      />
     </div>
   );
 }

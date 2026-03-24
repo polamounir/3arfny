@@ -15,8 +15,13 @@ import {
   LogOut,
   Settings2,
   Check,
+  User,
+  Loader2,
+  AlertCircle,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 
 export default function SettingsPage() {
   const [profile, setProfile] = useState<any>(null);
@@ -26,8 +31,16 @@ export default function SettingsPage() {
   const [copied, setCopied] = useState(false);
   const [prompts, setPrompts] = useState<string[]>([]);
   const [savingPrompts, setSavingPrompts] = useState(false);
+  const [newUsername, setNewUsername] = useState('');
+  const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
+  const [checkingUsername, setCheckingUsername] = useState(false);
+  const [savingUsername, setSavingUsername] = useState(false);
   const [bio, setBio] = useState('');
   const [savingBio, setSavingBio] = useState(false);
+  
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'deleteAccount' | 'updateUsername' | null>(null);
+  
   const router = useRouter();
   const supabase = createClient();
 
@@ -55,6 +68,7 @@ export default function SettingsPage() {
       }
 
       setProfile(data);
+      setNewUsername(data.username);
       setBio(data.bio || '');
       setPrompts(data.prompts && data.prompts.length > 0 ? data.prompts : [
         'ما رأيك بي بصدق؟',
@@ -67,6 +81,34 @@ export default function SettingsPage() {
 
     fetchProfile();
   }, [supabase, router]);
+
+  // Handle username availability check
+  useEffect(() => {
+    if (!profile || newUsername === profile.username) {
+      setIsAvailable(null);
+      return;
+    }
+
+    if (newUsername.length < 3) {
+      setIsAvailable(false);
+      return;
+    }
+
+    const check = async () => {
+      setCheckingUsername(true);
+      const { data } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('username', newUsername.toLowerCase())
+        .maybeSingle();
+
+      setIsAvailable(!data);
+      setCheckingUsername(false);
+    };
+
+    const timer = setTimeout(check, 500);
+    return () => clearTimeout(timer);
+  }, [newUsername, profile, supabase]);
 
   const shareLink =
     typeof window !== 'undefined' && profile
@@ -101,11 +143,11 @@ export default function SettingsPage() {
   };
 
   const handleDeleteAccount = async () => {
-    const confirmed = window.confirm(
-      'هل أنت متأكد تماماً؟ سيتم حذف حسابك وجميع رسائلك بشكل نهائي ولا يمكن التراجع عنه.',
-    );
-    if (!confirmed) return;
+    setIsConfirmModalOpen(true);
+    setPendingAction('deleteAccount');
+  };
 
+  const performDeleteAccount = async () => {
     setDeleting(true);
     const res = await fetch('/api/account/delete', { method: 'DELETE' });
 
@@ -162,6 +204,36 @@ export default function SettingsPage() {
       toast.success('تم حفظ الأسئلة بنجاح!');
     }
     setSavingPrompts(false);
+  };
+
+  const handleUpdateUsername = async () => {
+    if (!isAvailable || savingUsername || !profile) return;
+    setIsConfirmModalOpen(true);
+    setPendingAction('updateUsername');
+  };
+
+  const performUpdateUsername = async () => {
+    setSavingUsername(true);
+    try {
+      const res = await fetch('/api/profile/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: newUsername, bio: profile.bio }),
+      });
+
+      const result = await res.json();
+      if (res.ok) {
+        setProfile({ ...profile, username: result.username });
+        toast.success('تم تحديث اسم المستخدم بنجاح! 🎊');
+        setIsAvailable(null);
+      } else {
+        toast.error(result.error || 'فشل تحديث اسم المستخدم');
+      }
+    } catch (err) {
+      toast.error('حدث خطأ غير متوقع');
+    } finally {
+      setSavingUsername(false);
+    }
   };
 
   const handleLogout = async () => {
@@ -236,6 +308,64 @@ export default function SettingsPage() {
             >
               <ExternalLink size={18} />
             </a>
+          </div>
+        </motion.section>
+
+        {/* 1.2 - Username Change */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.12 }}
+          className="glass-card space-y-4 border border-white/5 relative overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 w-1 h-full bg-linear-to-b from-neon-orange to-neon-purple" />
+          <h2 className="text-lg font-bold flex items-center gap-2">
+            <User size={18} className="text-neon-orange" />
+            اسم المستخدم ورابط الصفحة
+          </h2>
+          <p className="text-white/40 text-sm">
+            يمكنك تغيير اسم المستخدم الخاص بك (الرابط: /u/اسم_المستخدم). 
+            <span className="text-red-400/80 block mt-1">⚠️ تحذير: تغيير الاسم سيعطل رابطك القديم.</span>
+          </p>
+
+          <div className="space-y-4">
+            <div className="relative">
+              <input
+                type="text"
+                value={newUsername}
+                onChange={(e) => setNewUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                className={`w-full glass-input text-right pl-12 ${
+                  isAvailable === true ? 'border-green-500/50' :
+                  isAvailable === false ? 'border-red-500/50' : ''
+                }`}
+                placeholder="اسم_المستخدم_الجديد"
+                maxLength={15}
+              />
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                {checkingUsername ? (
+                  <Loader2 size={16} className="animate-spin text-white/40" />
+                ) : isAvailable === true ? (
+                  <Check size={16} className="text-green-500" />
+                ) : isAvailable === false ? (
+                  <X size={16} className="text-red-500" />
+                ) : null}
+              </div>
+            </div>
+
+            {isAvailable === false && newUsername !== profile.username && (
+              <p className="text-xs text-red-500 flex items-center gap-1 justify-end">
+                {newUsername.length < 3 ? 'الاسم قصير جداً' : 'هذا الاسم محجوز بالفعل'}
+                <AlertCircle size={12} />
+              </p>
+            )}
+
+            <button
+              onClick={handleUpdateUsername}
+              disabled={isAvailable !== true || savingUsername || newUsername === profile.username}
+              className="w-full py-3 rounded-xl bg-white text-black font-black text-sm hover:scale-[1.01] transition-all disabled:opacity-30 disabled:hover:scale-100 flex items-center justify-center gap-2"
+            >
+              {savingUsername ? <Loader2 size={16} className="animate-spin" /> : 'تحديث اسم المستخدم'}
+            </button>
           </div>
         </motion.section>
 
@@ -418,6 +548,27 @@ export default function SettingsPage() {
           </Link>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => {
+          setIsConfirmModalOpen(false);
+          setPendingAction(null);
+        }}
+        onConfirm={() => {
+          if (pendingAction === 'deleteAccount') performDeleteAccount();
+          if (pendingAction === 'updateUsername') performUpdateUsername();
+        }}
+        variant={pendingAction === 'deleteAccount' ? 'danger' : 'info'}
+        title={pendingAction === 'deleteAccount' ? 'حذف الحساب نهائياً' : 'تحديث اسم المستخدم'}
+        message={
+          pendingAction === 'deleteAccount'
+            ? 'هل أنت متأكد تماماً؟ سيتم حذف حسابك وجميع رسائلك بشكل نهائي ولا يمكن التراجع عنه.'
+            : 'تغيير اسم المستخدم سيؤدي إلى تغيير رابطك العام. الروابط القديمة لن تعمل بعد الآن. هل أنت متأكد؟'
+        }
+        confirmText={pendingAction === 'deleteAccount' ? 'نعم، احذف حسابي' : 'تحديث الآن'}
+        cancelText="إلغاء"
+      />
     </div>
   );
 }
