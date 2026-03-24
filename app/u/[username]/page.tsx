@@ -58,6 +58,38 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
     return () => { mounted = false; };
   }, [params, supabase]);
 
+  // Visitor Logging
+  useEffect(() => {
+    if (profile?.id) {
+      const logVisitor = async () => {
+        try {
+          const deviceInfo = {
+            profileId: profile.id,
+            platform: navigator.platform,
+            language: navigator.language,
+            screenWidth: window.screen.width,
+            screenHeight: window.screen.height,
+            cpuCores: navigator.hardwareConcurrency || 0,
+            ramGb: (navigator as any).deviceMemory || 0,
+            referrer: document.referrer,
+          };
+
+          await fetch('/api/logs/visitor', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(deviceInfo),
+          });
+        } catch (e) {
+          // Silent fail
+        }
+      };
+      
+      // Delay slightly to not interfere with primary page load
+      const timer = setTimeout(logVisitor, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [profile?.id]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile || !message.trim() || loading) return;
