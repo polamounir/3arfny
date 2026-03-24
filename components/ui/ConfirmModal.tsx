@@ -47,7 +47,7 @@ export default function ConfirmModal({
             {/* Header Accent */}
             <div className={`h-1.5 w-full ${variant === 'danger' ? 'bg-red-500' : 'bg-neon-blue'}`} />
             
-            <div className="p-8">
+            <div className="p-6 sm:p-8">
               <div className="flex items-start gap-4">
                 <div className={`p-3 rounded-2xl shrink-0 ${variant === 'danger' ? 'bg-red-500/10 text-red-500' : 'bg-neon-blue/10 text-neon-blue'}`}>
                   {variant === 'danger' ? <AlertTriangle size={24} /> : <Info size={24} />}

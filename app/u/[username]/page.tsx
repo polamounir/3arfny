@@ -88,7 +88,7 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
       <div className="min-h-screen flex items-center justify-center p-4 bg-background" dir="rtl">
         <div className="text-center space-y-6">
           <div
-            className="text-[8rem] font-black leading-none"
+            className="text-[6rem] sm:text-[8rem] font-black leading-none"
             style={{
               background: 'linear-gradient(135deg, #a855f7, #3b82f6)',
               WebkitBackgroundClip: 'text',
@@ -128,7 +128,7 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background relative overflow-hidden" dir="rtl">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background relative overflow-hidden " dir="rtl">
       {/* Decorative Orbs */}
       <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-neon-purple/20 blur-[120px] rounded-full" />
       <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-neon-blue/20 blur-[120px] rounded-full" />
@@ -138,21 +138,21 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-lg relative z-10"
       >
-        <div className="glass-card p-8 md:p-12 text-center space-y-8 relative">
-          <div className="absolute -top-12 left-1/2 -translate-x-1/2">
-            <div className="w-24 h-24 rounded-3xl bg-linear-to-br from-neon-purple to-neon-blue p-1 shadow-[0_0_30px_rgba(168,85,247,0.4)]">
-              <div className="w-full h-full rounded-[20px] bg-background flex items-center justify-center">
-                <MessageSquareHeart className="w-12 h-12 text-neon-purple" />
+        <div className="glass-card p-8 md:p-12 text-center space-y-8 relative my-12">
+          <div className="absolute -top-10 sm:-top-12 left-1/2 -translate-x-1/2">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-linear-to-br from-neon-purple to-neon-blue p-1 shadow-[0_0_30px_rgba(168,85,247,0.4)]">
+              <div className="w-full h-full rounded-[18px] sm:rounded-[20px] bg-background flex items-center justify-center">
+                <MessageSquareHeart className="w-10 h-10 sm:w-12 sm:h-12 text-neon-purple" />
               </div>
             </div>
           </div>
 
-          <div className="pt-8 space-y-2">
-            <h1 className="text-3xl font-black tracking-tight text-white uppercase italic">
+          <div className="pt-10 sm:pt-12 space-y-2">
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white uppercase italic">
               أرسل رسالة إلى
             </h1>
             <div className="inline-block px-4 py-1 rounded-full bg-white/5 border border-white/10">
-              <span className="text-neon-gradient font-bold text-xl">@{profile.username}</span>
+              <span className="text-neon-gradient font-bold text-lg sm:text-xl">@{profile.username}</span>
             </div>
             {profile.bio && (
               <p className="text-white/50 text-sm text-center max-w-xs mx-auto pt-2">
@@ -163,8 +163,8 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-3 pt-2">
-              <p className="text-white/40 text-sm font-medium pr-1 text-right">أو اختر سؤالاً لتجيب عليه:</p>
-              <div className="flex flex-wrap items-center justify-end gap-2">
+              <p className="text-white/40 text-xs sm:text-sm font-medium pr-1 text-center sm:text-right">أو اختر سؤالاً لتجيب عليه:</p>
+              <div className="flex flex-wrap items-center justify-center gap-2">
                 {displayPrompts.map((prompt, i) => (
                   <button
                     key={i}
@@ -183,11 +183,11 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="اكتب شيئاً صريحاً، مضحكاً، أو غامضاً..."
-                className="w-full h-48 glass-input resize-none focus:ring-neon-blue/50 text-lg text-right"
+                className="w-full h-32 sm:h-48 glass-input resize-none focus:ring-neon-blue/50 text-base sm:text-lg text-right"
                 maxLength={500}
                 required
               />
-              <div className="absolute bottom-4 left-4 text-xs font-mono text-white/30">
+              <div className="absolute bottom-4 left-4 text-xs font-mono text-white/30" dir="ltr">
                 {message.length} / 500
               </div>
             </div>

@@ -58,7 +58,7 @@ export default function SuccessPage({ params }: Props) {
           transition={{ delay: 0.35 }}
           className="space-y-3"
         >
-          <h1 className="text-4xl md:text-5xl font-black text-white leading-tight">
+          <h1 className="text-2xl sm:text-4xl md:text-5xl font-black text-white leading-tight">
             🎉 تم الإرسال بنجاح!
           </h1>
           <p className="text-white/50 text-lg leading-relaxed">

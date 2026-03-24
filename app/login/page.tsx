@@ -126,7 +126,7 @@ export default function LoginPage() {
           <div className="inline-block p-3 rounded-2xl bg-neon-purple/20 mb-2">
             <MessageSquare className="w-8 h-8 text-neon-purple" />
           </div>
-          <h1 className="text-4xl font-bold text-neon-gradient">مرحباً بك في عرفني</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold text-neon-gradient">مرحباً بك في عرفني</h1>
           <p className="text-white/60">تسجيل دخول سريع وآمن (Gmail)</p>
         </div>
 
@@ -187,7 +187,7 @@ export default function LoginPage() {
                   placeholder="0000"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                  className="w-full glass-input text-center text-4xl tracking-[1em] font-black"
+                  className="w-full glass-input text-center text-3xl sm:text-4xl tracking-[0.4em] sm:tracking-[1em] font-black"
                   maxLength={4}
                   required
                   autoFocus
@@ -213,7 +213,7 @@ export default function LoginPage() {
           )}
         </AnimatePresence>
 
-        <p className="text-center text-xs text-white/40 leading-relaxed px-8">
+        <p className="text-center text-xs text-white/40 leading-relaxed px-4 sm:px-8">
           من خلال الاستمرار، فإنك توافق على{' '}
           <Link href="/terms" className="text-neon-blue/60 hover:text-neon-blue underline underline-offset-2">
             شروط الخدمة

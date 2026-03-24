@@ -263,44 +263,46 @@ export default function DashboardPage() {
           <div className="absolute top-0 right-0 w-1 h-full bg-linear-to-b from-neon-purple to-neon-blue" />
           
           <div className="space-y-1 text-right">
-            <h1 className="text-3xl font-black italic tracking-tighter">
+            <h1 className="text-2xl sm:text-3xl font-black italic tracking-tighter">
               {activeTab === 'inbox' ? 'صندوق الوارد' : 'الرسائل المُرسَلة'}
             </h1>
-            <p className="text-white/40 flex items-center gap-2 justify-end">
+            <p className="text-white/40 flex items-center gap-2 justify-end text-sm sm:text-base">
               <span className="text-neon-purple font-bold">@{profile.username}</span>
-              • {activeTab === 'inbox' ? `${messages.length} رسالة مستلمة` : `${sentMessages.length} رسالة مُرسَلة`}
+              • {activeTab === 'inbox' ? `${messages.length} رسالة` : `${sentMessages.length} رسالة`}
             </p>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center justify-center md:justify-end gap-2 sm:gap-3">
             <button
               onClick={copyLink}
-              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white text-black font-bold hover:scale-105 transition-all active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+              className="flex-1 min-w-[140px] md:flex-none flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl bg-white text-black font-bold hover:scale-105 transition-all active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.1)] text-xs sm:text-sm"
             >
-              <Copy size={18} />
+              <Copy size={16} sm:size={18} />
               مشاركة الرابط
             </button>
-            <button
-              onClick={() => setIsClearModalOpen(true)}
-              className="p-3 rounded-xl glass hover:bg-red-500/20 hover:text-red-500 transition-all text-white/40"
-              title="مسح الصندوق"
-            >
-              <Trash size={20} />
-            </button>
-            <Link
-              href="/settings"
-              className="p-3 rounded-xl glass hover:bg-white/10 transition-all text-white/40"
-              title="الإعدادات"
-            >
-              <Settings size={20} />
-            </Link>
-            <button
-              onClick={handleLogout}
-              className="p-3 rounded-xl glass hover:bg-white/10 transition-all text-white/40"
-              title="تسجيل الخروج"
-            >
-              <LogOut size={20} className="rotate-180" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsClearModalOpen(true)}
+                className="p-2.5 sm:p-3 rounded-xl glass hover:bg-red-500/20 hover:text-red-500 transition-all text-white/40"
+                title="مسح الصندوق"
+              >
+                <Trash size={18} sm:size={20} />
+              </button>
+              <Link
+                href="/settings"
+                className="p-2.5 sm:p-3 rounded-xl glass hover:bg-white/10 transition-all text-white/40"
+                title="الإعدادات"
+              >
+                <Settings size={18} sm:size={20} />
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="p-2.5 sm:p-3 rounded-xl glass hover:bg-white/10 transition-all text-white/40"
+                title="تسجيل الخروج"
+              >
+                <LogOut size={18} sm:size={20} className="rotate-180" />
+              </button>
+            </div>
           </div>
         </header>
 
@@ -420,20 +422,20 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     
-                    <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity relative z-0">
+                    <div className="flex flex-col gap-2 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity relative z-0">
                       <button
                         onClick={() => router.push(`/dashboard/share/${msg.id}`)}
-                        className="p-3 rounded-lg bg-neon-blue/20 text-neon-blue hover:bg-neon-blue transition-all hover:text-white"
+                        className="p-2.5 sm:p-3 rounded-lg bg-neon-blue/20 text-neon-blue hover:bg-neon-blue transition-all hover:text-white"
                         title="إنشاء صورة للمشاركة"
                       >
-                        <Share2 size={18} />
+                        <Share2 size={16} sm:size={18} />
                       </button>
                       <button
                         onClick={() => deleteMessage(msg.id, false)}
-                        className="p-3 rounded-lg bg-red-500/20 text-red-500 hover:bg-red-500 transition-all hover:text-white"
+                        className="p-2.5 sm:p-3 rounded-lg bg-red-500/20 text-red-500 hover:bg-red-500 transition-all hover:text-white"
                         title="حذف"
                       >
-                        <Trash2 size={18} />
+                        <Trash2 size={16} sm:size={18} />
                       </button>
                     </div>
                   </div>
@@ -505,13 +507,13 @@ export default function DashboardPage() {
                         )}
                       </div>
 
-                      <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity relative z-0">
+                      <div className="flex flex-col gap-2 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity relative z-0">
                         <button
                           onClick={() => deleteMessage(msg.id, true)}
-                          className="p-3 rounded-lg bg-red-500/20 text-red-500 hover:bg-red-500 transition-all hover:text-white"
+                          className="p-2.5 sm:p-3 rounded-lg bg-red-500/20 text-red-500 hover:bg-red-500 transition-all hover:text-white"
                           title="حذف من السجل"
                         >
-                          <Trash2 size={18} />
+                          <Trash2 size={16} sm:size={18} />
                         </button>
                       </div>
                     </div>

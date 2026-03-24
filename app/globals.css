@@ -47,7 +47,13 @@ body {
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: var(--shadow-glass);
-    padding: 1.5rem;
+    padding: 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .glass-card {
+      padding: 1.5rem;
+    }
   }
 
   .glass-input {

@@ -50,7 +50,7 @@ export default function LandingPage() {
         </nav>
 
         {/* Hero Section */}
-        <main className="pt-20 pb-32 flex flex-col items-center text-center">
+        <main className="pt-12 pb-20 sm:pt-20 sm:pb-32 flex flex-col items-center text-center">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -64,7 +64,7 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="text-6xl md:text-8xl font-black text-white mb-6 leading-tight"
+            className="text-4xl sm:text-6xl md:text-8xl font-black text-white mb-6 leading-tight"
           >
             أرسل رسائل <span className="text-neon-gradient">سرية</span> <br />
             بكل حرية.
@@ -96,7 +96,7 @@ export default function LandingPage() {
             ) : (
               <Link
                 href="/login"
-                className="px-10 py-5 rounded-2xl bg-neon-purple text-white text-xl font-black shadow-[0_0_30px_-5px_var(--color-neon-purple)] hover:scale-105 transition-transform"
+                className="px-8 py-4 sm:px-10 sm:py-5 rounded-2xl bg-neon-purple text-white text-lg sm:text-xl font-black shadow-[0_0_30px_-5px_var(--color-neon-purple)] hover:scale-105 transition-transform"
               >
                 ابدأ الآن مجاناً
               </Link>

@@ -250,11 +250,11 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-white p-4 md:p-8" dir="rtl">
+    <div className="min-h-screen bg-background text-white p-4 sm:p-8" dir="rtl">
       {/* Ambient glow */}
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-64 bg-neon-purple/10 blur-[100px] pointer-events-none -z-10" />
+      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-64 bg-neon-purple/10 blur-[120px] pointer-events-none -z-10" />
 
-      <div className="max-w-2xl mx-auto space-y-8">
+      <div className="max-w-2xl mx-auto space-y-4 sm:space-y-8">
         {/* Header */}
         <header className="flex items-center justify-between py-4">
           <Link
@@ -262,10 +262,10 @@ export default function SettingsPage() {
             className="flex items-center gap-2 text-white/40 hover:text-white transition-colors text-sm"
           >
             <ArrowRight size={16} className="rotate-180" />
-            العودة للوحة التحكم
+            <span className="hidden sm:inline">العودة للوحة التحكم</span>
           </Link>
 
-          <div className="flex items-center gap-2 text-white font-black text-xl">
+          <div className="flex items-center gap-2 text-white font-black text-lg sm:text-xl">
             <Settings2 size={22} className="text-neon-purple" />
             الإعدادات
           </div>
