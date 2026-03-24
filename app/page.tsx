@@ -12,7 +12,7 @@ export default function LandingPage() {
   const supabase = createClient();
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
+    supabase.auth.getUser().then(({ data } : any) => {
       setUser(data.user);
     });
   }, [supabase]);

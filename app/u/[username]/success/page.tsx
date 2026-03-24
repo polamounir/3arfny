@@ -16,7 +16,7 @@ export default function SuccessPage({ params }: Props) {
   const supabase = createClient();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }: any) => {
       if (session) setHasSession(true);
     });
   }, [supabase]);

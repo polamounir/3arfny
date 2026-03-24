@@ -2,14 +2,18 @@ import webpush from 'web-push';
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT || 'mailto:3arfny.mail@gmail.com',
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '',
-  process.env.VAPID_PRIVATE_KEY || ''
-);
-
 export async function POST(req: Request) {
   try {
+    const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    const privateKey = process.env.VAPID_PRIVATE_KEY;
+    const subject = process.env.VAPID_SUBJECT || 'mailto:3arfny.mail@gmail.com';
+
+    if (publicKey && privateKey) {
+      webpush.setVapidDetails(subject, publicKey, privateKey);
+    } else {
+      console.warn('VAPID keys missing, push notifications may fail');
+    }
+
     // Basic auth using Supabase webhook secret if provided
     const authHeader = req.headers.get('authorization');
     const secret = process.env.SUPABASE_WEBHOOK_SECRET;
