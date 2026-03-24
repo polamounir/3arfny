@@ -277,7 +277,7 @@ export default function DashboardPage() {
               onClick={copyLink}
               className="flex-1 min-w-[140px] md:flex-none flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl bg-white text-black font-bold hover:scale-105 transition-all active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.1)] text-xs sm:text-sm"
             >
-              <Copy size={16} sm:size={18} />
+              <Copy className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
               مشاركة الرابط
             </button>
             <div className="flex items-center gap-2">
@@ -286,21 +286,21 @@ export default function DashboardPage() {
                 className="p-2.5 sm:p-3 rounded-xl glass hover:bg-red-500/20 hover:text-red-500 transition-all text-white/40"
                 title="مسح الصندوق"
               >
-                <Trash size={18} sm:size={20} />
+                <Trash className="w-[18px] h-[18px] sm:w-5 sm:h-5" />
               </button>
               <Link
                 href="/settings"
                 className="p-2.5 sm:p-3 rounded-xl glass hover:bg-white/10 transition-all text-white/40"
                 title="الإعدادات"
               >
-                <Settings size={18} sm:size={20} />
+                <Settings className="w-[18px] h-[18px] sm:w-5 sm:h-5" />
               </Link>
               <button
                 onClick={handleLogout}
                 className="p-2.5 sm:p-3 rounded-xl glass hover:bg-white/10 transition-all text-white/40"
                 title="تسجيل الخروج"
               >
-                <LogOut size={18} sm:size={20} className="rotate-180" />
+                <LogOut className="w-[18px] h-[18px] sm:w-5 sm:h-5 rotate-180" />
               </button>
             </div>
           </div>
@@ -428,14 +428,14 @@ export default function DashboardPage() {
                         className="p-2.5 sm:p-3 rounded-lg bg-neon-blue/20 text-neon-blue hover:bg-neon-blue transition-all hover:text-white"
                         title="إنشاء صورة للمشاركة"
                       >
-                        <Share2 size={16} sm:size={18} />
+                        <Share2 className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
                       </button>
                       <button
                         onClick={() => deleteMessage(msg.id, false)}
                         className="p-2.5 sm:p-3 rounded-lg bg-red-500/20 text-red-500 hover:bg-red-500 transition-all hover:text-white"
                         title="حذف"
                       >
-                        <Trash2 size={16} sm:size={18} />
+                        <Trash2 className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
                       </button>
                     </div>
                   </div>
@@ -513,7 +513,7 @@ export default function DashboardPage() {
                           className="p-2.5 sm:p-3 rounded-lg bg-red-500/20 text-red-500 hover:bg-red-500 transition-all hover:text-white"
                           title="حذف من السجل"
                         >
-                          <Trash2 size={16} sm:size={18} />
+                          <Trash2 className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
                         </button>
                       </div>
                     </div>
